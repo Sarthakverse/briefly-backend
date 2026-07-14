@@ -19,4 +19,62 @@ model User {
   role           String   @default("user")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  passwordResetToken PasswordResetToken?   
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  otp       String
+  expiresAt DateTime
+}
+
+model Adapter {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  releases  Release[]
+  meetings  Meeting[]
+}
+
+model Release {
+  id          String        @id @default(cuid())
+  name        String
+  adapterId   String
+  adapter     Adapter       @relation(fields: [adapterId], references: [id], onDelete: Cascade)
+  summary     String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  enhancements Enhancement[]
+  meetings    Meeting[]
+  @@unique([name, adapterId])
+}
+
+model Enhancement {
+  id        String    @id @default(cuid())
+  name      String
+  releaseId String
+  release   Release   @relation(fields: [releaseId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  meetings  Meeting[]
+  @@unique([name, releaseId])
+}
+
+model Meeting {
+  id            String      @id @default(cuid())
+  title         String
+  adapterId     String
+  releaseId     String
+  enhancementId String
+  adapter       Adapter     @relation(fields: [adapterId], references: [id])
+  release       Release     @relation(fields: [releaseId], references: [id])
+  enhancement   Enhancement @relation(fields: [enhancementId], references: [id])
+  transcriptUrl String?
+  status        String      @default("pending") // pending, processing, completed, failed
+  sharepointSyncStatus String @default("pending")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 }

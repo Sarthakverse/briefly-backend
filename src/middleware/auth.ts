@@ -12,9 +12,18 @@ export async function authenticate(req: Request, res: Response, next: NextFuncti
     const payload = verifyToken(token) as { userId: string; email: string };
     const user = await prisma.user.findUnique({ where: { id: payload.userId } });
     if (!user) return res.status(401).json({ message: 'User not found' });
-    (req as any).user = user;  // attach user to request
+    (req as any).user = user;
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Invalid token' });
   }
+}
+
+
+export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  const user = (req as any).user;
+  if (!user || user.role !== 'admin') {
+    return res.status(403).json({ message: 'Admin access required' });
+  }
+  next();
 }
