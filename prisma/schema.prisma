@@ -8,18 +8,19 @@ datasource db {
 }
 
 model User {
-  id             String   @id @default(cuid())
-  email          String   @unique
-  passwordHash   String
-  name           String
-  department     String?
-  designation    String?
-  phone          String?
-  officeLocation String?
-  role           String   @default("user")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-  passwordResetToken PasswordResetToken?   
+  id               String   @id @default(cuid())
+  email            String   @unique
+  passwordHash     String
+  name             String
+  department       String?
+  designation      String?
+  phone   String?  @unique
+  officeLocation   String?
+  role             String   @default("user")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  passwordResetToken PasswordResetToken?
+  refreshTokens      RefreshToken[]
 }
 
 model PasswordResetToken {
@@ -64,17 +65,39 @@ model Enhancement {
 }
 
 model Meeting {
-  id            String      @id @default(cuid())
-  title         String
-  adapterId     String
-  releaseId     String
-  enhancementId String
-  adapter       Adapter     @relation(fields: [adapterId], references: [id])
-  release       Release     @relation(fields: [releaseId], references: [id])
-  enhancement   Enhancement @relation(fields: [enhancementId], references: [id])
-  transcriptUrl String?
-  status        String      @default("pending") // pending, processing, completed, failed
-  sharepointSyncStatus String @default("pending")
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  id                  String      @id @default(cuid())
+  title               String
+  adapterId           String
+  releaseId           String
+  enhancementId       String
+  adapter             Adapter     @relation(fields: [adapterId], references: [id])
+  release             Release     @relation(fields: [releaseId], references: [id])
+  enhancement         Enhancement @relation(fields: [enhancementId], references: [id])
+  transcriptUrl       String?
+  transcriptText       String?  
+  status              String      @default("pending") // pending, processing, completed, failed
+  sharepointSyncStatus String     @default("pending")
+
+  // AI generated content
+  execSummary         String?     // Executive Summary text
+  execMermaid         String?     // Executive Summary Mermaid script
+  techSummary         String?     // Technical Summary text
+  techMermaid         String?     // Technical Summary Mermaid script
+  speakerSummary      String?     // Speaker Summary text
+  speakerMermaid      String?     // Speaker Summary Mermaid script
+  metadata            Json?       // meeting metadata (date, participants, agenda, etc.)
+
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }

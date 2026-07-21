@@ -1,0 +1,12 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_1 = require("../middleware/auth");
+const enhancement_controller_1 = require("../controllers/enhancement.controller");
+const router = (0, express_1.Router)();
+router.get('/recent', auth_1.authenticate, enhancement_controller_1.enhancementController.getRecent);
+router.get('/releases/:releaseId/enhancements', auth_1.authenticate, enhancement_controller_1.enhancementController.getByRelease);
+router.post('/releases/:releaseId/enhancements', auth_1.authenticate, auth_1.requireAdmin, enhancement_controller_1.enhancementController.create);
+router.put('/:id', auth_1.authenticate, auth_1.requireAdmin, enhancement_controller_1.enhancementController.update);
+router.delete('/:id', auth_1.authenticate, auth_1.requireAdmin, enhancement_controller_1.enhancementController.delete);
+exports.default = router;

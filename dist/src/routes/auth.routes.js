@@ -1,0 +1,17 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_controller_1 = require("../controllers/auth.controller");
+const auth_1 = require("../middleware/auth");
+const rateLimiter_1 = require("../middleware/rateLimiter");
+const validate_1 = require("../middleware/validate");
+const auth_2 = require("../validators/auth");
+const router = (0, express_1.Router)();
+router.post('/signup', rateLimiter_1.authLimiter, (0, validate_1.validate)(auth_2.signupSchema), auth_controller_1.authController.signup);
+router.post('/login', rateLimiter_1.authLimiter, (0, validate_1.validate)(auth_2.loginSchema), auth_controller_1.authController.login);
+router.post('/refresh', (0, validate_1.validate)(auth_2.refreshTokenSchema), auth_controller_1.authController.refreshToken);
+router.post('/forgot-password', rateLimiter_1.authLimiter, (0, validate_1.validate)(auth_2.forgotPasswordSchema), auth_controller_1.authController.forgotPassword);
+router.post('/reset-password', rateLimiter_1.authLimiter, (0, validate_1.validate)(auth_2.resetPasswordSchema), auth_controller_1.authController.resetPassword);
+router.get('/me', auth_1.authenticate, auth_controller_1.authController.getProfile);
+router.post('/logout', auth_1.authenticate, auth_controller_1.authController.logout);
+exports.default = router;

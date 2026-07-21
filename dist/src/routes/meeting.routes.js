@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_1 = require("../middleware/auth");
+const meeting_controller_1 = require("../controllers/meeting.controller");
+const router = (0, express_1.Router)();
+router.get('/recent', auth_1.authenticate, meeting_controller_1.meetingController.getRecent);
+router.get('/enhancements/:enhancementId', auth_1.authenticate, meeting_controller_1.meetingController.getByEnhancement);
+router.get('/:id', auth_1.authenticate, meeting_controller_1.meetingController.getById);
+router.post('/', auth_1.authenticate, meeting_controller_1.meetingController.create);
+router.put('/:id', auth_1.authenticate, auth_1.requireAdmin, meeting_controller_1.meetingController.update);
+router.delete('/:id', auth_1.authenticate, auth_1.requireAdmin, meeting_controller_1.meetingController.delete);
+router.post('/:id/reprocess', auth_1.authenticate, auth_1.requireAdmin, meeting_controller_1.meetingController.reprocess);
+router.get('/:id/llm-input', auth_1.authenticate, meeting_controller_1.meetingController.getLLMInput);
+exports.default = router;

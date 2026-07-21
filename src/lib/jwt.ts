@@ -1,11 +1,20 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import { config } from '../config';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret-change-me';
-
-export function generateToken(userId: string, email: string): string {
-  return jwt.sign({ userId, email }, JWT_SECRET, { expiresIn: '7d' });
+export function generateAccessToken(userId: string, email: string): string {
+  return jwt.sign({ userId, email }, config.jwtSecret, { expiresIn: '15m' });
 }
 
-export function verifyToken(token: string) {
-  return jwt.verify(token, JWT_SECRET);
+export function generateRefreshToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+export function verifyAccessToken(token: string): { userId: string; email: string } {
+  return jwt.verify(token, config.jwtSecret) as { userId: string; email: string };
+}
+
+// Hash function for refresh tokens (SHA-256)
+export function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
 }

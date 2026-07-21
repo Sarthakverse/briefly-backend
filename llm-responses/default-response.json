@@ -1,0 +1,169 @@
+{
+  "meetingMetadata": {
+    "title": "Meeting in 26.10 Multi-Host wallet DR support in DB-20260507_171745-Meeting Recording",
+    "date": "May 7, 2026",
+    "participants": [
+      "Sathya Prakash Kattepura Ramu",
+      "Rahul Singh",
+      "Pratap Reddy Some",
+      "Shah Trisha"
+    ],
+    "agenda": "Discuss and plan the implementation of Disaster Recovery (DR) support for Multi-Host wallets in the context of ATP database connections from OIC adapters.",
+    "dominantLanguage": "English"
+  },
+  "executiveSummary": {
+    "text": "The meeting focused on enabling the OIC adapter to support ATP database failover between primary (Mumbai) and secondary (Phoenix) regions using a combined wallet. The current setup requires manual wallet re-upload on failover; the goal is automatic or configurable switching. The team discussed parsing a combined wallet zip containing multiple region folders, implementing a failover mechanism (likely using two data sources or a dynamic context), and addressing edge cases like wallet passwords, certificate reloading, and performance. Key tasks were assigned: Rahul to analyze Slack and design the failover logic, Trisha to prepare test instances and validate the baseline, and Sathya to coordinate admin setup. A follow-up meeting was scheduled to review the design.",
+    "mermaid": "flowchart TD\n    Start([Start]) --> Goal[Goal: Support ATP DR failover in OIC adapter]\n    Goal --> Current[Current: Manual wallet upload per region]\n    Current --> Requirement[Requirement: Automatic/Configurable failover]\n    Requirement --> Combined[Combined wallet zip with multiple regions]\n    Combined --> Design[Design failover logic]\n    Design --> Approach[Approach options: Two pools or dynamic context]\n    Approach --> Config[Configuration: auto.fallback, preferred.region]\n    Config --> Risks[Consider risks: performance, certificate rotation]\n    Risks --> Actions[Assign action items]\n    Actions --> End([End])"
+  },
+  "detailedSummary": {
+    "objective": "To plan the technical implementation for the OIC adapter to support Disaster Recovery (DR) for ATP databases using a combined wallet that contains connection details for both primary and secondary regions.",
+    "attendeesDetails": "Pratap Reddy Some (presumably leading/coordinating), Rahul Singh (developer/analyst), Shah Trisha (developer/tester), Sathya Prakash Kattepura Ramu (coordinator/administrator).",
+    "discussionTopics": [
+      {
+        "topic": "Current State and Requirement",
+        "discussion": "Pratap explained that currently, for each ATP instance, there are two regions (e.g., Mumbai as primary, Phoenix as secondary). In a DR scenario, if the primary region fails, users must manually upload the wallet for the secondary region to the OIC adapter. The goal is to support automatic or easier failover using a combined wallet that contains details for both regions. This combined wallet approach works for other clients like SQL Developer but not for the OIC adapter yet.",
+        "status": "Proposed"
+      },
+      {
+        "topic": "Combined Wallet Structure",
+        "discussion": "Pratap described that the combined wallet zip likely contains two subdirectories (one per region) with separate wallet files (ewallet.p12, cwallet.sso, etc.) and a merged tnsnames.ora at the root. The adapter must load the correct SSO file based on the active region. Rahul raised the need to parse the zip efficiently and avoid repeated extraction.",
+        "status": "Decided"
+      },
+      {
+        "topic": "Failover Strategy",
+        "discussion": "The team discussed two main approaches: using two separate Hikari connection pools (one per region) and switching between them, or using a single pool and dynamically changing its JDBC URL and SSL context. Rahul suggested prototyping both. They also discussed making the failover behavior (automatic fallback) configurable via properties like 'auto.fallback' and 'preferred.region'. A sticky failover for the JVM session was proposed. The use of a circuit breaker or health-check thread was debated; consensus leaned towards a fail-on-error, sticky approach to avoid performance overhead.",
+        "status": "Proposed"
+      },
+      {
+        "topic": "Wallet Password and OCA Signature",
+        "discussion": "The team noted that the combined wallet likely uses a single password for both regions. Rahul and Trisha agreed to document this as a limitation. Pratap clarified that the OCA signature policy uses the same wallet structure for mutual TLS, so the DR implementation for SSL will automatically cover OCA.",
+        "status": "Decided"
+      },
+      {
+        "topic": "Performance and Caching",
+        "discussion": "Rahul suggested caching parsed wallet details (like SSO bytes) in the credential store during deployment to avoid repeated unzipping on each connection creation. Trisha raised the point about OIC's upload payload limit, which was deemed a non-issue due to small wallet size.",
+        "status": "Proposed"
+      },
+      {
+        "topic": "Testing and Monitoring",
+        "discussion": "The team planned a comprehensive test matrix including region failure simulations and rapid flapping. They also decided to add logging and audit entries to the OIC activity stream to indicate when a failover occurs.",
+        "status": "Open"
+      },
+      {
+        "topic": "In-flight Transactions",
+        "discussion": "A brief discussion on handling in-flight transactions during failover. The team concluded that the primary responsibility lies at the integration flow level; the adapter should ensure stale connections are evicted and new requests use the active region, while ongoing requests will fail and can be retried.",
+        "status": "Decided"
+      }
+    ],
+    "technicalDetails": "The core technical challenge involves parsing a combined Oracle wallet zip file containing multiple regions, each with its own set of credential files (cwallet.sso, ewallet.p12, etc.). The adapter must securely store and retrieve these credentials based on the active region. Potential solutions include: (1) A routing data source that holds two separate Hikari connection pools, each pre-configured with the respective region's wallet and JDBC URL, switching between them based on a volatile flag. (2) A single data source that dynamically updates its JDBC URL and SSL context, requiring careful management of existing connections. The team acknowledged the need for a configurable failover policy (auto-fallback, preferred region) and the importance of caching parsed wallet details to avoid performance degradation. The approach is expected to also work for the OCA signature policy, as it uses the same mutual TLS authentication mechanism.",
+    "decisionsMade": [
+      "Team agreed to support DR for ATP by using a combined wallet that includes multiple region-specific subdirectories.",
+      "The wallet password is assumed to be consistent across regions; this will be documented as a limitation.",
+      "Failover mechanism will likely be a sticky, error-based approach to avoid continuous health-check overhead, but this remains to be prototyped.",
+      "The solution for JDBC over SSL will also address OCA signature policy, as they share the same code path for wallet handling.",
+      "Stale connections will be evicted using test-on-borrow validation, and in-flight transaction failures will be handled at the flow level."
+    ],
+    "actionItems": [
+      {
+        "owner": "Rahul Singh",
+        "task": "Analyze the Slack channel for detailed instructions on creating the combined wallet, design the configuration model and failover logic, and prototype the two-pool vs dynamic-context approaches.",
+        "deadline": "Not specified",
+        "status": "New",
+        "notes": "Will also look into reusing existing wallet parsing POC code."
+      },
+      {
+        "owner": "Shah Trisha",
+        "task": "Prepare test ATP instances in two regions, generate a combined wallet as per DR team's instructions, and validate the working scenario in SQL Developer to establish a baseline.",
+        "deadline": "Not specified",
+        "status": "New",
+        "notes": "Will also help with the test matrix for failover scenarios."
+      },
+      {
+        "owner": "Sathya Prakash Kattepura Ramu",
+        "task": "Arrange admin setup and coordinate with the infrastructure team to get access to the DR testbed.",
+        "deadline": "Not specified",
+        "status": "New",
+        "notes": "Will also coordinate with DB team for test instances."
+      }
+    ],
+    "blockersAndRisks": [
+      {
+        "description": "Potential complexity in handling different wallet passwords per region, which may not be supported by the combined wallet approach.",
+        "raisedBy": "Rahul Singh",
+        "owner": "Rahul Singh",
+        "mitigation": "Document the limitation; assume consistent password and verify with the DR team."
+      },
+      {
+        "description": "Performance overhead from unzipping and parsing the wallet on every connection if not cached.",
+        "raisedBy": "Shah Trisha",
+        "owner": "Rahul Singh",
+        "mitigation": "Cache parsed wallet details in the credential store during deployment."
+      },
+      {
+        "description": "Handling edge cases like rapid flapping between regions causing connection pool thrashing.",
+        "raisedBy": "Sathya Prakash Kattepura Ramu",
+        "owner": "Rahul Singh",
+        "mitigation": "Implement a circuit breaker or sticky failover with a timeout."
+      }
+    ],
+    "openQuestions": [
+      "Do the primary and secondary regions use the same wallet password in all cases?",
+      "What is the exact format of the combined wallet zip provided by the DR team?",
+      "How will the configuration for 'auto.fallback' and 'preferred.region' be exposed in the OIC UI or properties?",
+      "What is the deadline for delivering this DR support?",
+      "Will the failover switching be manual (via admin API) or fully automatic?"
+    ],
+    "nextSteps": "A follow-up meeting is scheduled for the next day to review Rahul's design and prototype results. Trisha will set up the test environment and generate the combined wallet. Sathya will arrange for test infrastructure access.",
+    "conclusion": "The meeting successfully defined the scope and requirements for implementing DR support for Multi-Host wallets in the OIC adapter. The team identified the key technical challenges, assigned action items, and agreed on a high-level direction, pending further prototyping and design review."
+  },
+  "detailedMermaid": "flowchart TD\n    Start([Start]) --> Need[Need to support ATP DR failover]\n    Need --> Current[Current: Manual wallet upload per region]\n    Current --> Combined[Proposed: Use combined wallet zip]\n    Combined --> Parse[Parse zip with multiple region subdirs]\n    Parse --> Struct[Wallet struct: separate SSO/PK per region, merged tnsnames.ora]\n    Struct --> Choice{Failover Approach}\n    Choice -->|Two Pools| TwoPool[Two Hikari pools, switch active pool]\n    Choice -->|Dynamic| Dynamic[Single pool, dynamically change context]\n    TwoPool --> Config[Add config: auto.fallback, preferred.region]\n    Dynamic --> Config\n    Config --> Cache[Cache parsed wallet details to avoid re-unzip]\n    Cache --> HandleSSL[SSL and OCA signature handled by same wallet logic]\n    HandleSSL --> Test[Test with region down/up scenarios]\n    Test --> Log[Log and audit failover events]\n    Log --> Inflight[Decide: in-flight transactions fail; retry at flow level]\n    Inflight --> Actions[Action Items: Rahul design/prototype, Trisha test env, Sathya infra]\n    Actions --> End([End])",
+  "speakerContributionChart": "pie title Meeting Contribution\n\"Pratap Reddy Some\" : 35\n\"Rahul Singh\" : 30\n\"Sathya Prakash Kattepura Ramu\" : 20\n\"Shah Trisha\" : 15",
+  "speakerSummaries": [
+    {
+      "name": "Pratap Reddy Some",
+      "role": "Technical Lead/Coordinator",
+      "labelIsGeneric": false,
+      "mainContributions": "Drove the meeting by explaining the current DR process and the requirement to support combined wallets. Clarified the structure of the combined wallet and confirmed that the solution for SSL will also address OCA signature. Guided the discussion on the expected behavior from the adapter and coordinated with the team on next steps.",
+      "opinionsPositions": "Advocated for a solution that mimics how other clients (SQL Developer) handle failover. Emphasized the need to support both DR and non-DR scenarios seamlessly.",
+      "decisionsInfluenced": "Influenced the decision to assume a single password for the combined wallet and to rely on the wallet parsing code path for both SSL and OCA.",
+      "actionItemsOwned": [],
+      "notablePoints": "Frequently used 'Okay' and 'Mm' to acknowledge inputs. He is the primary point of contact for the DR requirements."
+    },
+    {
+      "name": "Rahul Singh",
+      "role": "Developer/Analyst",
+      "labelIsGeneric": false,
+      "mainContributions": "Active in technical discussion, asking clarifying questions about the wallet structure and failover mechanisms. Proposed using two connection pools or a dynamic context. Suggested caching parsed wallet details and implementing a configurable failover policy.",
+      "opinionsPositions": "Preferenced a performance-conscious approach, avoiding repeated wallet extraction. Raised concerns about wallet password differences and the complexity of handling in-flight transactions.",
+      "decisionsInfluenced": "His questions led to the decision to document the wallet password limitation and to prototype two different failover approaches.",
+      "actionItemsOwned": [
+        "Analyze the Slack channel for detailed instructions on creating the combined wallet, design the configuration model and failover logic, and prototype the two-pool vs dynamic-context approaches."
+      ],
+      "notablePoints": "Assigned the primary technical design and prototyping task."
+    },
+    {
+      "name": "Sathya Prakash Kattepura Ramu",
+      "role": "Coordinator/Administrator",
+      "labelIsGeneric": false,
+      "mainContributions": "Initiated the meeting recording. Participated in the technical discussion, primarily focusing on operational aspects like the health-check thread vs. fail-on-error approach and test matrix planning. Coordinated the meeting flow.",
+      "opinionsPositions": "Supported a simpler, fail-on-error, sticky failover approach to avoid performance overhead.",
+      "decisionsInfluenced": "Helped shape the decision to avoid a heavy health-check thread and instead rely on connection failures to trigger failover.",
+      "actionItemsOwned": [
+        "Arrange admin setup and coordinate with the infrastructure team to get access to the DR testbed."
+      ],
+      "notablePoints": "Managed the recording and was attentive to the technical details."
+    },
+    {
+      "name": "Shah Trisha",
+      "role": "Developer/Tester",
+      "labelIsGeneric": false,
+      "mainContributions": "Raised pragmatic questions about the UI for wallet upload and performance implications of parsing the zip each time. Offered to set up the test environment and validate the baseline.",
+      "opinionsPositions": "Concerned about user experience and performance; focused on the practical aspects of implementation and testing.",
+      "decisionsInfluenced": "Her questions led to the decision to cache parsed wallet details and confirmed the need to test with OCA.",
+      "actionItemsOwned": [
+        "Prepare test ATP instances in two regions, generate a combined wallet as per DR team's instructions, and validate the working scenario in SQL Developer to establish a baseline."
+      ],
+      "notablePoints": "Proactively asked about the scope of operations and the test matrix."
+    }
+  ]
+}
