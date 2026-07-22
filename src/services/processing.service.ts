@@ -2,6 +2,7 @@ import { meetingService } from './meeting.service';
 import { validateAndMapResponse } from '../utils/validateAndMapResponse';
 import { extractTextFromFile } from '../utils/extractText';
 import { processTranscript } from './llm.service';
+import { workspaceService } from './workspace.service';
 
 // Remove null bytes and trim whitespace from a string
 function cleanString(str: string | undefined): string | undefined {
@@ -51,5 +52,32 @@ export async function startMeetingProcessing(meetingId: string, filePath: string
   } catch (error) {
     console.error('Processing failed:', error);
     await meetingService.update(meetingId, { status: 'failed' });
+  }
+}
+
+export async function startWorkspaceProcessing(workspaceId: string, userId: string, filePath: string, mimeType: string) {
+  try {
+    await workspaceService.update(userId, workspaceId, { status: 'processing' });
+
+    let transcriptText = await extractTextFromFile(filePath, mimeType);
+    transcriptText = cleanString(transcriptText) || '';
+    await workspaceService.update(userId, workspaceId, { transcriptText });
+
+    const llmOutput = await processTranscript(workspaceId, transcriptText);
+    let parsed = validateAndMapResponse(llmOutput);
+    parsed = deepClean(parsed);
+
+    await workspaceService.update(userId, workspaceId, {
+      status: 'completed',
+      execSummary: parsed.execSummary,
+      execMermaid: parsed.execMermaid,
+      techSummary: parsed.techSummary,
+      techMermaid: parsed.techMermaid,
+      speakerSummary: parsed.speakerSummary,
+      speakerMermaid: parsed.speakerMermaid,
+    });
+  } catch (error) {
+    console.error('Workspace processing failed:', error);
+    await workspaceService.update(userId, workspaceId, { status: 'failed' });
   }
 }

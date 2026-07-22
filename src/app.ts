@@ -8,14 +8,11 @@ const app = express();
 
 app.use(cors({
   origin(origin, callback) {
-    // Requests without an Origin header include curl, server-to-server calls, and mobile clients.
     if (!origin) return callback(null, true);
 
     const isConfiguredOrigin = config.corsOrigins.includes(origin);
-    const isNgrokOrigin = config.allowNgrokOrigins
-      && /^https:\/\/[a-z0-9-]+\.ngrok-free\.app$/i.test(origin);
 
-    return callback(null, isConfiguredOrigin || isNgrokOrigin);
+    return callback(null, isConfiguredOrigin);
   },
 }));
 app.use(express.json({ limit: '5mb' }));

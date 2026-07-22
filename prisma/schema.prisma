@@ -8,19 +8,22 @@ datasource db {
 }
 
 model User {
-  id               String   @id @default(cuid())
-  email            String   @unique
-  passwordHash     String
-  name             String
-  department       String?
-  designation      String?
-  phone   String?  @unique
-  officeLocation   String?
-  role             String   @default("user")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  passwordResetToken PasswordResetToken?
-  refreshTokens      RefreshToken[]
+  id                     String   @id @default(cuid())
+  email                  String   @unique
+  passwordHash           String
+  name                   String
+  department             String?
+  designation            String?
+  phone                  String?  @unique
+  officeLocation         String?
+  role                   String   @default("user")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  passwordResetToken     PasswordResetToken?
+  refreshTokens          RefreshToken[]
+  workspaceTranscripts   WorkspaceTranscript[]
+  favorites              Favorite[]
 }
 
 model PasswordResetToken {
@@ -65,30 +68,34 @@ model Enhancement {
 }
 
 model Meeting {
-  id                  String      @id @default(cuid())
-  title               String
-  adapterId           String
-  releaseId           String
-  enhancementId       String
-  adapter             Adapter     @relation(fields: [adapterId], references: [id])
-  release             Release     @relation(fields: [releaseId], references: [id])
-  enhancement         Enhancement @relation(fields: [enhancementId], references: [id])
-  transcriptUrl       String?
-  transcriptText       String?  
-  status              String      @default("pending") // pending, processing, completed, failed
-  sharepointSyncStatus String     @default("pending")
+  id                    String      @id @default(cuid())
+  title                 String
+  adapterId             String
+  releaseId             String
+  enhancementId         String
+
+  adapter               Adapter     @relation(fields: [adapterId], references: [id])
+  release               Release     @relation(fields: [releaseId], references: [id])
+  enhancement           Enhancement @relation(fields: [enhancementId], references: [id])
+
+  transcriptUrl         String?
+  transcriptText        String?
+  status                String      @default("pending")
+  sharepointSyncStatus  String      @default("pending")
 
   // AI generated content
-  execSummary         String?     // Executive Summary text
-  execMermaid         String?     // Executive Summary Mermaid script
-  techSummary         String?     // Technical Summary text
-  techMermaid         String?     // Technical Summary Mermaid script
-  speakerSummary      String?     // Speaker Summary text
-  speakerMermaid      String?     // Speaker Summary Mermaid script
-  metadata            Json?       // meeting metadata (date, participants, agenda, etc.)
+  execSummary           String?
+  execMermaid           String?
+  techSummary           String?
+  techMermaid           String?
+  speakerSummary        String?
+  speakerMermaid        String?
+  metadata              Json?
 
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  favorites             Favorite[]
 }
 
 model RefreshToken {
@@ -100,4 +107,47 @@ model RefreshToken {
 
   expiresAt DateTime
   createdAt DateTime @default(now())
+}
+
+model WorkspaceTranscript {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title           String?
+  transcriptUrl   String?
+  transcriptText  String?
+  status          String   @default("pending")
+
+  // AI generated content
+  execSummary     String?
+  execMermaid     String?
+  techSummary     String?
+  techMermaid     String?
+  speakerSummary  String?
+  speakerMermaid  String?
+  metadata        Json?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  favorites       Favorite[]
+}
+
+model Favorite {
+  id                     String                 @id @default(cuid())
+
+  userId                 String
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  meetingId              String?
+  meeting                Meeting?               @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  workspaceTranscriptId  String?
+  workspaceTranscript    WorkspaceTranscript?   @relation(fields: [workspaceTranscriptId], references: [id], onDelete: Cascade)
+
+  createdAt              DateTime               @default(now())
+
+  @@unique([userId, meetingId])
+  @@unique([userId, workspaceTranscriptId])
 }
